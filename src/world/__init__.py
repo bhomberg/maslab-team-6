@@ -32,7 +32,6 @@ class WorldBlargh():#Blargh):
         else:
             pass
 
-        # Return the Map object
         return ("MAP", self.map)
 
     ################## NOT USING THIS FOR MOCK 1 ####################
@@ -73,20 +72,21 @@ class WorldBlargh():#Blargh):
 
 
 
+# Class to keep track of the location of the robot
 class Robot():
-    """ Class to keep track of the location of the robot. """
     def __init__(self, x, y):
         self.x = x
         self.y = y
 
     def translate(self, dx, dy):
-        """ Translate the robot and return the new coords. """
+        # Translate the robot 
         self.x += dx
         self.y += dy
-        return (self.x, self.y)
+    
+    def getCoords(self):
+	return(self.x, self.y)
 
     def setCoords(self, x, y):
-        """ Set the x, y coords of the robot. """
         self.x = x
         self.y = y
 
@@ -101,7 +101,7 @@ class Map():
         self.robot = Robot(0, 0)
 
     def updateBallProb(self, ballLocs):
-        # Temporary code
+        # TODO: Replace temporary code with real probability code
         self.ballGrid = {}
         for x, y in ballLocs:
             self.ballGrid[(x, y)] = 1.0
@@ -124,21 +124,21 @@ class Map():
         ballGrid[key] = val2
 
     def setRobotLocation(self, x, y):
-        """ Set the robot location to an arbitrary x, y coord. """
+        # Set the robot location to an arbitrary x, y coord
         self.robot.setLocation(x, y)
         self.expandMapForRobot()
 
     def translateRobot(self, dx, dy):
-        """ Set the robot location to be dx, dy greater than before. """
+        # Set the robot location to be dx, dy greater than before
         self.robot.translate(dx, dy)
         self.expandMapForRobot()
 
     def expandMapForRobot(self):
-        """ Expand the map to make sure the robot coords are in it """
+        # Expand the map to make sure the robot coords are in it
         self.expandMapForCoord(self.robot.x, self.robot.y)
 
     def expandMapForCoord(self, x, y):
-        """ Expand the map to make sure the coord is inside it. """
+        # Expand the map to make sure the coord is inside it
         if (x > self.maxX):
             self.maxX = x
         elif (x < self.minX):

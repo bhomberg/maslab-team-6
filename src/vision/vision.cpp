@@ -9,9 +9,11 @@
 
 using namespace std;
 
-#define CAMERA_NUM 0
+#define CAMERA_NUM 1
 #define NUM_FRAMES_TO_AVERAGE 2
 
+#define BLUE_DISPARITY 25
+#define BLUE_THRESHOLD 10
 #define RED_DISPARITY 100
 #define RED_THRESHOLD 60
 #define ECCENTRICITY_THRESHOLD 0.1
@@ -54,9 +56,11 @@ class ImageProcessing
         IplImage* hsvImage;
         IplImage* normalized;
         IplImage* ballImage;
+        IplImage* wallImage;
         IplImage* contourImage;
         IplImage* contourImage3C;
         IplImage* ellipseImage;
+        IplImage* lineImage;
         CvMemStorage* contourStorage;
         CvMemStorage* houghStorage;
         CvMemStorage* pointStorage;
@@ -76,9 +80,11 @@ class ImageProcessing
             hsvImage = cvCreateImage(cvGetSize(frame), IPL_DEPTH_8U, 3);
             normalized = cvCreateImage(cvGetSize(frame), IPL_DEPTH_8U, 3);
             ballImage = cvCreateImage(cvGetSize(normalized), IPL_DEPTH_8U, 1);
+	    wallImage = cvCreateImage(cvGetSize(normalized), IPL_DEPTH_8U, 1);
             contourImage = cvCreateImage(cvGetSize(frame), IPL_DEPTH_8U, 1);
             contourImage3C = cvCreateImage(cvGetSize(frame), IPL_DEPTH_8U, 3);
             ellipseImage = cvCreateImage(cvGetSize(frame), IPL_DEPTH_8U, 3);
+	    lineImage = cvCreateImage(cvGetSize(frame), IPL_DEPTH_8U, 3);
 
             // Create a CvMemStorage
             contourStorage = cvCreateMemStorage(0);
@@ -106,7 +112,7 @@ class ImageProcessing
         {
             // Display it
             cvShowImage("Original", frame);
-
+	    cvSmooth( frame, frame, CV_BLUR, 7,7 );
             // Remove noise by blurring - REDACTED!
             /*
             IplImage* temp = cvCreateImage(cvSize(320, 240), IPL_DEPTH_8U, 3);
@@ -171,7 +177,7 @@ class ImageProcessing
                 for (int j = 0; j < hsvImage->width; j++)
                 {
                     int index = i * hsvImage->widthStep + j * hsvImage->nChannels;
-                    hsvImage->imageData[index+2] = 200;
+                    //hsvImage->imageData[index+2] = 200;
                 }
             }
 
@@ -208,8 +214,27 @@ class ImageProcessing
                     }
                 }
             }
+	    for (int i = 0; i < normalized->height; i++)
+            {
+                for (int j = 0; j < normalized->width; j++)
+                {
+                    int wallImageIndex = i * wallImage->widthStep + j * wallImage->nChannels;
+                    int frameIndex = i * normalized->widthStep + j * normalized->nChannels;
+                    uchar* imageData = (uchar*) frame->imageData;
+                    if (imageData[frameIndex] >= imageData[frameIndex+2] + BLUE_DISPARITY
+                          && imageData[frameIndex] >= imageData[frameIndex+1] + BLUE_DISPARITY
+                          && imageData[frameIndex] >= BLUE_THRESHOLD)
+                    {
+                        wallImage->imageData[wallImageIndex] = 255;
+                    }
+                    else
+                    {
+                        wallImage->imageData[wallImageIndex] = 0;
+                    }
+                }
+            }
 
-            cvShowImage("Intermediate", ballImage);
+            cvShowImage("Intermediate", wallImage);
 
             // Get contours in the image
             CvSeq* contours = NULL;
@@ -221,6 +246,7 @@ class ImageProcessing
             cvZero(ellipseImage);
             cvZero(contourImage);
             CvBox2D ellipseBound;
+	    
             for (CvSeq* contour = contours; contour != 0; contour = contour->h_next)
             {
                 CvSeq* listOfPoints = cvCreateSeq(CV_SEQ_ELTYPE_POINT, sizeof(CvSeq), sizeof(CvPoint), pointStorage);
@@ -236,7 +262,8 @@ class ImageProcessing
                 ellipseBound = cvFitEllipse2(listOfPoints);
                 if (eccentricity(ellipseBound.size.width, ellipseBound.size.height) <= ECCENTRICITY_THRESHOLD)
                 {
-                    cvEllipse(ellipseImage, cvPoint(ellipseBound.center.x, ellipseBound.center.y), cvSize(ellipseBound.size.width/2, ellipseBound.size.height/2), -ellipseBound.angle, 0, 360, CV_RGB(0, 0xff, 0));
+                    cvEllipse(ellipseImage, cvPoint(ellipseBound.center.x, ellipseBound.center.y), 
+			      cvSize(ellipseBound.size.width/2, ellipseBound.size.height/2), -ellipseBound.angle, 0, 360, CV_RGB(0, 0xff, 0));
                 }
                 else
                 {
@@ -249,6 +276,7 @@ class ImageProcessing
             // Process contours with a houghTransform
             CvSeq* houghCircles = cvHoughCircles(contourImage, houghStorage, CV_HOUGH_GRADIENT, 3, 5, 10, 50);
             // Draw them
+
             for (int i = 0; i < houghCircles->total; i++)
             {
                 float* p = (float*) cvGetSeqElem(houghCircles, i);
@@ -256,7 +284,34 @@ class ImageProcessing
                 cvCircle(ellipseImage, pt, cvRound(p[2]), CV_RGB(0xff, 0, 0));
             }
 
-            cvShowImage("Output", ellipseImage);
+            // Get contours in the image
+            contours = NULL;
+            cvFindContours(wallImage, contourStorage, &contours);
+            // Show it!
+
+            // Process contours with fit ellipse
+	    cvZero(lineImage);
+            cvZero(contourImage);
+
+            for (CvSeq* contour = contours; contour != 0; contour = contour->h_next)
+            {
+	        if ( contour->total >= 50 )
+		{
+		    cvDrawContours(contourImage, contour, CV_RGB(0xff, 0xff, 0xff), CV_RGB(0x99, 0x99, 0x99), -1);
+		}
+            }
+ 
+            // Process contours with a houghTransform
+            CvSeq* houghLines = cvHoughLines2(contourImage, houghStorage, CV_HOUGH_PROBABILISTIC, 3,CV_PI/180, 50, 50,10);
+            // Draw them
+
+            for( int i = 0; i < houghLines->total; i++ )
+            {
+                CvPoint* line = (CvPoint*)cvGetSeqElem(houghLines,i);
+                cvLine( lineImage, line[0], line[1], CV_RGB(255,0,0), 3, 8 );
+            }
+
+            cvShowImage("Output", lineImage);
 
             // We need to pause a little each frame to make sure it doesn't
             // break

@@ -242,8 +242,8 @@ class DriveStraightState(State):
         # Check for yellow wall
 
         # Check for critical time
-        if self.checkCritical(worldWrapper):
-            return DriveToWallState(worldWrapper), STATE_CHANGE_FLAG
+        #if self.checkCritical(worldWrapper):
+            #return DriveToWallState(worldWrapper), STATE_CHANGE_FLAG
         
         # Check for Balls
         if len(world.balls) > 0:
@@ -297,8 +297,8 @@ class TurnState(State):
         # TODO: Check this value and tweak for best performance
         if random.random() < timeEqualizedRandom(self.lastTime, worldWrapper.time, 0.5):
             return DriveStraightState(worldWrapper), STATE_CHANGE_FLAG
-        if random.random() < timeEqualizedRandom(self.lastTime, worldWrapper.time, 0.7):
-            return DriveToWallState(worldWrapper), STATE_CHANGE_FLAG
+        #if random.random() < timeEqualizedRandom(self.lastTime, worldWrapper.time, 0.7):
+            #return DriveToWallState(worldWrapper), STATE_CHANGE_FLAG
         # Otherwise, turn.
         else:
             self.lastTime = worldWrapper.time

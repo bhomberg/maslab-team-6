@@ -288,8 +288,8 @@ class TurnState(State):
 
 
         # Check for critical time
-        if self.checkCritical(worldWrapper):
-            return DriveToWallState(worldWrapper), STATE_CHANGE_FLAG
+        #if self.checkCritical(worldWrapper):
+            #return DriveToWallState(worldWrapper), STATE_CHANGE_FLAG
 
         # Set the goal location
         goal = TurnState.GOAL
@@ -364,7 +364,7 @@ class FollowWallState(State):
                 turned = self.TURNED_STRAIGHT
                 
             if random.random() < timeEqualizedRandom(self.lastTime, worldWrapper.time, 0.1):
-                return DriveToWallState(worldWrapper), STATE_CHANGE_FLAG
+                #return DriveToWallState(worldWrapper), STATE_CHANGE_FLAG
 
 
             
@@ -498,7 +498,7 @@ class EscapeState(State):
     BACKUP_TIME = 1
     TURN_TIME = 1
     BACKUP_GOAL = (-20, 0)
-    TURN_GOAL = (0, pi/4)
+    TURN_GOAL = (0, -pi/4)
 
     def __init__(self, worldWrapper):
         # Keep track of time to go through a few different time-based motions
